@@ -2,7 +2,7 @@ AI Voice Interviewer
 
 <img width="1608" height="949" alt="image" src="https://github.com/user-attachments/assets/4496b85f-c7f7-4e4d-b4b1-8db42e1346f3" />
 
-<img width="1291" height="938" alt="image" src="https://github.com/user-attachments/assets/ba0e5f31-18ef-4a3a-b87c-06f46895587e" />
+<img width="1608" height="938" alt="image" src="https://github.com/user-attachments/assets/ba0e5f31-18ef-4a3a-b87c-06f46895587e" />
 
 
 An AI-powered voice-based interview platform that generates tailored interview questions and conducts interactive mock interviews. It dynamically adapts to the candidate’s uploaded resume, specified job role, and focus topics.
