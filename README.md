@@ -1,16 +1,53 @@
-# React + Vite
+AI Voice Interviewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An AI-powered voice-based interview platform that generates tailored interview questions and conducts interactive mock interviews. It dynamically adapts to the candidate’s uploaded resume, specified job role, and focus topics.
 
-Currently, two official plugins are available:
+🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Resume-driven question generation using Cerebras API.
 
-## React Compiler
+Voice-based interaction with ElevenLabs (Text-to-Speech) and Speech-to-Text integration.
 
-The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+PDF resume parsing via PDF.co.
 
-## Expanding the ESLint configuration
+Session storage & user management with Supabase.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Backend automation powered by n8n workflows for seamless API coordination.
+
+Frontend UI built in React for smooth candidate interaction.
+
+🛠️ Tech Stack
+
+Frontend: React
+
+Backend Automation: n8n workflows (2 separate flows for processing & storage)
+
+APIs & Services:
+
+Cerebras API
+ – AI-based question generation
+
+PDF.co
+ – PDF parsing
+
+ElevenLabs
+ – Text-to-Speech
+
+Speech-to-Text service (via ElevenLabs / custom integration)
+
+Supabase
+ – database & session storage
+
+⚙️ How It Works
+
+User uploads a resume (PDF) and specifies a job role + focus topics.
+
+Resume text is extracted using PDF.co.
+
+n8n workflow calls the Cerebras API to generate interview questions.
+
+Questions are converted to voice output using ElevenLabs TTS.
+
+User responds via microphone; Speech-to-Text transcribes the answer.
+
+Responses, questions, and session data are stored in Supabase.
