@@ -11,6 +11,14 @@ Youtube Link : https://youtu.be/qoLFcG0OX24
 
 N8N Workflow Files are : Start Interview.json  &  Answer Handler.json . Those two files are uploaded above.
 
+
+**Start Interview.JSON**
+<img width="1681" height="369" alt="image" src="https://github.com/user-attachments/assets/371123ed-9bdb-4c5f-94d4-3a9a07b11775" />
+
+**Answer Handler.JSON**
+<img width="1659" height="289" alt="image" src="https://github.com/user-attachments/assets/c71703cb-c456-449c-ab31-aec30cc33e34" />
+
+
 An AI-powered voice-based interview platform that generates tailored interview questions and conducts interactive mock interviews. It dynamically adapts to the candidate’s uploaded resume, specified job role, and focus topics.
 
 🚀 Features
@@ -66,10 +74,5 @@ User responds via microphone; Speech-to-Text transcribes the answer.
 
 Responses, questions, and session data are stored in Supabase.
 
-**Start Interview.JSON**
-<img width="1681" height="369" alt="image" src="https://github.com/user-attachments/assets/371123ed-9bdb-4c5f-94d4-3a9a07b11775" />
-
-**Answer Handler.JSON**
-<img width="1659" height="289" alt="image" src="https://github.com/user-attachments/assets/c71703cb-c456-449c-ab31-aec30cc33e34" />
 
 
