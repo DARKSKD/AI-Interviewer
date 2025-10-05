@@ -5,6 +5,12 @@ AI Voice Interviewer
 <img width="1608" height="938" alt="image" src="https://github.com/user-attachments/assets/ba0e5f31-18ef-4a3a-b87c-06f46895587e" />
 
 
+
+
+Youtube Link : https://youtu.be/qoLFcG0OX24
+
+N8N Workflow Files are : Start Interview.json  &  Answer Handler.json . Those two files are uploaded above.
+
 An AI-powered voice-based interview platform that generates tailored interview questions and conducts interactive mock interviews. It dynamically adapts to the candidate’s uploaded resume, specified job role, and focus topics.
 
 🚀 Features
