@@ -58,7 +58,7 @@ Responses, questions, and session data are stored in Supabase.
 **Start Interview.JSON**
 <img width="1681" height="369" alt="image" src="https://github.com/user-attachments/assets/371123ed-9bdb-4c5f-94d4-3a9a07b11775" />
 
-**Answer Interview.JSON**
+**Answer Handler.JSON**
 <img width="1659" height="289" alt="image" src="https://github.com/user-attachments/assets/c71703cb-c456-449c-ab31-aec30cc33e34" />
 
 
