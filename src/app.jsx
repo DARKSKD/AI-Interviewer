@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
-const WEBHOOK_URL = "http://localhost:5678/webhook-test/start";
-const ANSWER_WEBHOOK_URL = "http://localhost:5678/webhook-test/answer";
+const WEBHOOK_URL = "http://localhost:5678/webhook/start";
+const ANSWER_WEBHOOK_URL = "http://localhost:5678/webhook/answer";
 
 export default function InterviewVoiceUI() {
   const [topic, setTopic] = useState("");
