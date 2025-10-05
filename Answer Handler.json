@@ -1,0 +1,612 @@
+{
+  "name": "Answer Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "answer",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3024,
+        144
+      ],
+      "id": "ef58cb96-a711-4315-adda-d28a3117c8d9",
+      "name": "Webhook",
+      "webhookId": "519f9984-4cf6-4124-90f3-2bfcd6ee34bb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const httpResponse = $input.first().json;\n\n// Supabase returns a single object when using eq filter, not an array\nconst sessionRow = httpResponse;\n\nif (!sessionRow || !sessionRow.session_id) {\n  const requestedSessionId = $('Webhook').first().json.body.sessionId;\n  throw new Error(`Session not found. Requested: ${requestedSessionId}`);\n}\n\nconst sessionData = sessionRow.data;\n\nreturn {\n  json: {\n    session: {\n      session_id: sessionRow.session_id,\n      candidate_name: sessionData.candidate_name,\n      job_role: sessionData.job_role,\n      skills: sessionData.skills,\n      work_exp: sessionData.work_exp,\n      year_exp: sessionData.year_exp || 0,\n      topics: sessionData.topics,\n      total_questions: sessionData.total_questions || 1,\n      conversation_history: sessionData.conversation_history || [],\n      last_question: sessionData.last_question || \"\"\n    }\n  },\n  binary: $('Webhook').first().binary\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2400,
+        144
+      ],
+      "id": "730ede78-e10f-409b-ac9e-62f57ebc3d7e",
+      "name": "Load session code"
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "operation": "speechToText",
+        "file": "audio",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        -2176,
+        144
+      ],
+      "id": "0c4fd792-ba97-496f-b438-5f68aa8c7c63",
+      "name": "Transcribe audio or video",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "E7oHa2ZDJP6SpiHi",
+          "name": "ElevenLabs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get transcription\nconst transcript = $input.first().json.text;\n\n// Get session from Load session code node\nconst sessionData = $('Load session code').first().json.session;\n\n// Get the last question from session\nconst lastQuestion = sessionData.last_question || \"Tell me about your experience\";\n\n// Get conversation history\nconst conversationHistory = sessionData.conversation_history || [];\n\n// INCREMENT question number - this is the current answer being processed\nconst currentQuestionNumber = sessionData.total_questions + 1;\n\nreturn {\n  json: {\n    transcript: transcript,\n    session_id: sessionData.session_id,\n    candidate_name: sessionData.candidate_name,\n    job_role: sessionData.job_role,\n    skills: sessionData.skills,\n    work_exp: sessionData.work_exp,\n    year_exp: sessionData.year_exp,\n    topics: sessionData.topics,\n    last_question: lastQuestion,\n    question_number: currentQuestionNumber,  \n    session: sessionData,\n    conversationHistory: conversationHistory\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1920,
+        144
+      ],
+      "id": "f9f75868-3406-42bc-80bd-6975c0c941cc",
+      "name": "Process Answer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.choices[0].message.content;\nlet evaluation;\n\ntry {\n  evaluation = JSON.parse(aiResponse);\n} catch (e) {\n  console.log(\"Failed to parse evaluation JSON, using defaults\");\n  evaluation = {\n    score: 5,\n    feedback: \"Answer received\",\n    continue: true\n  };\n}\n\nconst prevData = $('Process Answer').first().json;\nconst sessionData = prevData.session;\nconst totalQuestions = prevData.question_number;\nconst currentScore = evaluation.score || 0;\n\nconst shouldContinue = evaluation.continue && totalQuestions < 4;\n\nconst updatedHistory = sessionData.conversation_history || [];\nupdatedHistory.push({\n  question: prevData.last_question,\n  answer: prevData.transcript,\n  score: currentScore,\n  feedback: evaluation.feedback,\n  timestamp: new Date().toISOString()\n});\n\nreturn {\n  json: {\n    session_id: prevData.session_id,\n    candidate_name: prevData.candidate_name,\n    job_role: prevData.job_role,\n    skills: prevData.skills,\n    work_exp: prevData.work_exp,\n    year_exp: prevData.year_exp,\n    topics: prevData.topics,\n    transcript: prevData.transcript,\n    score: currentScore,\n    feedback: evaluation.feedback,\n    question_number: totalQuestions,\n    continue_interview: shouldContinue,\n    session: {\n      ...sessionData,\n      conversation_history: updatedHistory,\n      total_questions: totalQuestions\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        144
+      ],
+      "id": "7e724555-2de9-48ad-9675-ba77aef9d3aa",
+      "name": "parse evaluation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "890bd6d0-e4d0-4aaa-9179-044bed81b5ff",
+              "leftValue": "={{ $json.continue_interview }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -592,
+        160
+      ],
+      "id": "0c4fde48-3a76-4044-a658-7e23545f6223",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cerebras.ai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.1-8b\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Appreciate the user for the answer. Generate ONE specific, challenging interview question based on the candidate's background and job role. Be friendly with the candidate and return a question in a conversational way.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Candidate: {{ $json.candidate_name }}\\nSkills: {{ $json.skills }}\\nExperience: {{ $json.work_exp }}\\nJob Role: {{ $json.job_role }}\\nQuestions Asked: {{ $json.question_number }}\\n\\nPrevious Answer Score: {{ $json.score }}/10\\nFeedback: {{ $json.feedback }}\\n\\nGenerate the next interview question (question number {{ $json.question_number + 1 }}).\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 400\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -352,
+        80
+      ],
+      "id": "a29d3192-21d8-462e-a985-c2f5cd663876",
+      "name": "Next Question",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AAsbf0sHJDuPHpUV",
+          "name": "Cerebras api 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn {\n  json: {\n    session_id: data.session_id,\n    question_text: `Thank you ${data.candidate_name}! Interview completed. Your score was ${data.score}/10 for this question. We'll be in touch soon!`,\n    question_number: data.question_number + 1,\n    done: true,\n    final_feedback: data.feedback\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        272
+      ],
+      "id": "0d069d50-f4ee-4e67-bdd4-225fd4508c09",
+      "name": "End"
+    },
+    {
+      "parameters": {
+        "jsCode": "const questionText = $input.first().json.choices[0].message.content.trim();\nconst prevData = $('parse evaluation').first().json;\n\nreturn {\n  json: {\n    session_id: prevData.session_id,\n    question_text: questionText,\n    question_number: prevData.question_number + 1,\n    candidate_name: prevData.candidate_name,\n    done: false,\n    current_score: prevData.score,\n    feedback: prevData.feedback\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        80
+      ],
+      "id": "a38854c6-aa42-49d9-92ff-8872381c709d",
+      "name": "Format Question"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        64,
+        80
+      ],
+      "id": "de004e71-6725-43e6-b012-e0975cd3ec98",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "value": "EXAVITQu4vr4xnSDxMaL",
+          "mode": "list",
+          "cachedResultName": "Sarah"
+        },
+        "text": "=={{ $json.question_text }}",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        288,
+        80
+      ],
+      "id": "821c10c1-11cf-4063-b9df-2288f121825c",
+      "name": "Next Audio question",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "E7oHa2ZDJP6SpiHi",
+          "name": "ElevenLabs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get audio binary\nconst ttsAudioBinary = $input.first().binary.data;\n\n// Get question data\nconst questionData = $('Merge').first().json;\n\n// Convert to base64\nconst base64Audio = ttsAudioBinary.data.toString('base64');\nconst audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;\n\nreturn {\n  json: {\n    sessionId: questionData.session_id,\n    question: questionData.question_text,\n    questionNumber: questionData.question_number,\n    ttsUrl: audioDataUrl,\n    done: questionData.done || false,\n    transcript: $('Process Answer').first().json.transcript,\n    score: questionData.current_score,\n    feedback: questionData.feedback,\n    hintAvailable: !questionData.done,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        80
+      ],
+      "id": "89abe660-5e13-4edd-ad54-7f460cd9c4db",
+      "name": "prepare response"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        784,
+        80
+      ],
+      "id": "6164e417-ed47-4124-ae12-09b987ee2579",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst requestBody = {\n  model: \"llama3.1-8b\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are an expert interviewer. Evaluate the candidate's answer and provide: 1) A score from 1-10, 2) Brief constructive feedback (2-3 sentences), 3) Set 'continue' to true unless the answer is completely off-topic or shows fundamental lack of understanding. Return valid JSON with keys: score, feedback, continue\"\n    },\n    {\n      role: \"user\",\n      content: `Question: ${data.last_question}\n\nCandidate's Answer: ${data.transcript}\n\nCandidate Profile:\n- Name: ${data.candidate_name}\n- Skills: ${data.skills}\n- Experience: ${data.work_exp}\n- Job Role: ${data.job_role}\n\nEvaluate this answer. Whatever the answer is either completely irrelevant or shows severe lack of knowledge the continue should be true unless total number of question asked is 3. Return JSON format: {\"score\": <number>, \"feedback\": \"<text>\", \"continue\": <boolean>}`\n    }\n  ],\n  temperature: 0.5,\n  max_tokens: 350,\n  response_format: { type: \"json_object\" }\n};\n\nreturn {\n  json: {\n    requestBody: requestBody,\n    ...data\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1712,
+        144
+      ],
+      "id": "7a36d371-5874-46d7-8eff-996e8c3107bd",
+      "name": "Build evaluation format"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cerebras.ai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1488,
+        144
+      ],
+      "id": "ff92e8a3-2cd9-4f3b-a9e1-038134228eae",
+      "name": "Evaluation",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AAsbf0sHJDuPHpUV",
+          "name": "Cerebras api 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://icnuyzorzlzwvmfylejn.supabase.co/rest/v1/interview_sessions?session_id=eq.{{ $json.session_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbnV5em9yemx6d3ZtZnlsZWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NDU4NDMsImV4cCI6MjA3NTIyMTg0M30.wQlMlckVsepAHV7nzRNO6ODMnGmJYIlBCyv-4Tiqpjc"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -864,
+        336
+      ],
+      "id": "00d260a2-2921-4f17-91d8-3f73963a5a12",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kcHRPF2hYxgUtW1d",
+          "name": "supabas api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $input.first().json;\n\nconsole.log(\"Full webhook data:\", JSON.stringify(webhookData, null, 2));\nconsole.log(\"Body:\", webhookData.body);\nconsole.log(\"Query:\", webhookData.query);\nconsole.log(\"Headers:\", webhookData.headers);\n\nreturn {\n  json: webhookData,\n  binary: $input.first().binary\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2800,
+        144
+      ],
+      "id": "54755e72-8b24-4ea7-8122-6a87cde9684d",
+      "name": "data check"
+    },
+    {
+      "parameters": {
+        "url": "=https://icnuyzorzlzwvmfylejn.supabase.co/rest/v1/interview_sessions?session_id=eq.{{ $json.body.sessionId }}&select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbnV5em9yemx6d3ZtZnlsZWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NDU4NDMsImV4cCI6MjA3NTIyMTg0M30.wQlMlckVsepAHV7nzRNO6ODMnGmJYIlBCyv-4Tiqpjc"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2608,
+        144
+      ],
+      "id": "7cc08921-60c0-486e-82d3-aed4952121a8",
+      "name": "supabase data fetch",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kcHRPF2hYxgUtW1d",
+          "name": "supabas api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn {\n  json: {\n    session_id: data.session_id,\n    requestBody: {\n      data: {\n        candidate_name: data.candidate_name,\n        job_role: data.job_role,\n        topics: data.topics,\n        skills: data.skills,\n        work_exp: data.work_exp,\n        year_exp: data.year_exp || 0,\n        total_questions: data.question_number,\n        last_question: data.session && data.session.last_question ? data.session.last_question : \"\",\n        conversation_history: data.session && data.session.conversation_history ? data.session.conversation_history : []\n      }\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        336
+      ],
+      "id": "fa2617ee-e3e2-4ca6-b745-094f449fdf2d",
+      "name": "update supabase code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "data check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe audio or video": {
+      "main": [
+        [
+          {
+            "node": "Process Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Answer": {
+      "main": [
+        [
+          {
+            "node": "Build evaluation format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse evaluation": {
+      "main": [
+        [
+          {
+            "node": "update supabase code",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Next Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next Question": {
+      "main": [
+        [
+          {
+            "node": "Format Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "End": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Format Question": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Next Audio question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next Audio question": {
+      "main": [
+        [
+          {
+            "node": "prepare response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load session code": {
+      "main": [
+        [
+          {
+            "node": "Transcribe audio or video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build evaluation format": {
+      "main": [
+        [
+          {
+            "node": "Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluation": {
+      "main": [
+        [
+          {
+            "node": "parse evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data check": {
+      "main": [
+        [
+          {
+            "node": "supabase data fetch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "supabase data fetch": {
+      "main": [
+        [
+          {
+            "node": "Load session code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update supabase code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1ceed2cf-0629-43af-80a1-197d2bba44c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33535b0f2224b875c329cd1b321d14bf99434add7ca4a1fb20f1883acfd6985e"
+  },
+  "id": "IQZVz7hPiB9cOw1o",
+  "tags": []
+}

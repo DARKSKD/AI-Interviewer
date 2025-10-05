@@ -1,0 +1,439 @@
+{
+  "name": "Start Interview",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "start",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1296,
+        -48
+      ],
+      "id": "f56d336d-90ab-494e-a417-206a406c6031",
+      "name": "Webhook",
+      "webhookId": "372a2652-3331-4d07-8a4f-25e5dc24d390"
+    },
+    {
+      "parameters": {
+        "operation": "Convert from PDF",
+        "url": "={{ $json.url }}",
+        "convertType": "toTextSimple",
+        "advancedOptions_TextSimple": {}
+      },
+      "type": "n8n-nodes-pdfco.PDFco Api",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        -48
+      ],
+      "id": "76de7627-4a26-43a9-9562-90311c2d3a9c",
+      "name": "pdf to text",
+      "credentials": {
+        "pdfcoApi": {
+          "id": "Dmcyalff7RytGY8q",
+          "name": "PDF.co account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "Upload File to PDF.co",
+        "binaryData": true,
+        "binaryPropertyName": "resume",
+        "name": "={{ $binary.resume.fileName }}"
+      },
+      "type": "n8n-nodes-pdfco.PDFco Api",
+      "typeVersion": 1,
+      "position": [
+        -1088,
+        -48
+      ],
+      "id": "4ca7659c-3acb-42b9-b2f5-d4913e21255f",
+      "name": "upload_pdf",
+      "credentials": {
+        "pdfcoApi": {
+          "id": "Dmcyalff7RytGY8q",
+          "name": "PDF.co account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.body }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "name",
+              "description": "The Name of the user in resume data."
+            },
+            {
+              "name": "skills",
+              "description": "The key skills that he/she have only keywords."
+            },
+            {
+              "name": "work_exp",
+              "description": "work experience that he/she has in short."
+            },
+            {
+              "name": "education",
+              "description": "from where he/she had education from in short."
+            },
+            {
+              "name": "year_exp",
+              "description": "=Years of Experience in this type of Job role : {{ $('Webhook').item.json.body.jobRole }}. Either it be months or years."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        -48
+      ],
+      "id": "9fc3463c-c7d1-467a-b55a-36d4a9ccbc19",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        160
+      ],
+      "id": "1a85a713-5a11-4c10-83a5-5ce216dee5b2",
+      "name": "Information-extractor",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wj1RqwJT0V2DhVrL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get resume and job data\nconst resumeData = $input.first().json.output;\nconst jobData = $('Webhook').first().json.body.jobRole;\n\n// Create unique session ID\nconst sessionId = `interview_${Date.now()}_${resumeData.name.replace(/\\s+/g, '_')}`;\n\n// Initialize conversation history array\nconst conversationHistory = [];\n\n// Initialize session metadata\nconst sessionMetadata = {\n  session_id: sessionId,\n  candidate_name: resumeData.name,\n  job_role: jobData,\n  topics: $('Webhook').first().json.body.topic + $('Webhook').first().json.body.specific ,\n  skills: resumeData.skills,\n  work_exp: resumeData.work_exp,\n  year_of_expreience : resumeData.year_exp,\n  started_at: new Date().toISOString(),\n  total_questions: 1,\n  total_score: 0,\n  conversation_history: conversationHistory\n};\n\n// Store in workflow static data (persists across nodes in same execution)\nreturn {\n  json: {\n    session: sessionMetadata,\n    job: jobData\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -48
+      ],
+      "id": "9ac11223-24e7-4aed-a325-98a8240f96d2",
+      "name": "Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const questionText = $input.first().json.choices[0].message.content;\n\nreturn {\n  json: {\n    session_id: $('Memory').first().json.session.session_id ,\n    question_number: 1,\n    question_text: questionText,\n    candidate_name: $('Memory').first().json.session.candidate_name,\n    job_role: $('Memory').first().json.session.job_role,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -48
+      ],
+      "id": "a7b42e3e-e974-4d53-893c-4d5d41a439f5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "value": "EXAVITQu4vr4xnSDxMaL",
+          "mode": "list",
+          "cachedResultName": "Sarah"
+        },
+        "text": "={{ $json.question_text }}",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -48
+      ],
+      "id": "c0486833-a417-4d14-b99b-fc5968712aeb",
+      "name": "Convert text to speech",
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "E7oHa2ZDJP6SpiHi",
+          "name": "ElevenLabs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the TTS audio binary data from the previous node\nconst ttsAudioBinary = $input.first().binary.data;\n\n// Get question data\nconst questionData = $('Code in JavaScript').first().json; // Adjust to your \"Prepare First Question\" node name\n\n// Get session info\nlet sessionId = questionData.session_id;\nlet questionText = questionData.question_text;\nlet questionNumber = questionData.question_number;\n\nconst executionId = $execution.resumeUrl;\n\n// Convert binary to base64 - CORRECT WAY in n8n\nconst base64Audio = ttsAudioBinary.data.toString('base64');\nconst audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`;\n\nreturn {\n  json: {\n    sessionId: sessionId,\n    question: questionText,\n    questionNumber: questionNumber,\n    ttsUrl: audioDataUrl,\n    hintAvailable: true,\n    waitWebhookUrl: executionId,\n    done: false,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -48
+      ],
+      "id": "5983bb35-66d6-4106-ade3-b1a501791b14",
+      "name": "Send audio"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1056,
+        -48
+      ],
+      "id": "0a4270e6-fce0-4f13-9486-7897877bb5b4",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cerebras.ai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.1-8b\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert technical interviewer. Generate ONE specific, challenging interview question based on the candidate's background and job role. Be friendly with the candidate and return a question in a conversational way.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Candidate: {{ $json.session.candidate_name }}\\nSkills: {{ $json.session.skills }}\\nWork Experience: {{ $json.session.work_exp }}\\nJob Role: {{ $json.session.job_role }}\\nFocus Topics: {{ $json.session.topics }}\\n\\nGenerate the first interview question (verbal mode only).\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 200\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        96,
+        -48
+      ],
+      "id": "1696c6e3-3500-4ad1-8499-18eab023eaba",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AAsbf0sHJDuPHpUV",
+          "name": "Cerebras api 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://icnuyzorzlzwvmfylejn.supabase.co/rest/v1/interview_sessions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljbnV5em9yemx6d3ZtZnlsZWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NDU4NDMsImV4cCI6MjA3NTIyMTg0M30.wQlMlckVsepAHV7nzRNO6ODMnGmJYIlBCyv-4Tiqpjc"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1472,
+        -48
+      ],
+      "id": "d72a552e-2bb9-4b55-a217-ebab77811123",
+      "name": "initialize session",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kcHRPF2hYxgUtW1d",
+          "name": "supabas api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessionData = $('Memory').first().json.session;\nconst questionText = $('Code in JavaScript').first().json.question_text;\n\nreturn {\n  json: {\n    session_id: sessionData.session_id,\n    data: {\n      candidate_name: sessionData.candidate_name,\n      job_role: sessionData.job_role,\n      topics: sessionData.topics,\n      skills: sessionData.skills,\n      work_exp: sessionData.work_exp,\n      year_exp: sessionData.year_of_expreience,\n      total_questions: 1,\n      last_question: questionText,\n      conversation_history: []\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        -48
+      ],
+      "id": "94c8d210-f8d0-4fb1-bf2a-0de717565361",
+      "name": "data intialiased"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "upload_pdf",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload_pdf": {
+      "main": [
+        [
+          {
+            "node": "pdf to text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pdf to text": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information-extractor": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert text to speech": {
+      "main": [
+        [
+          {
+            "node": "Send audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send audio": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "data intialiased",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "initialize session": {
+      "main": [
+        []
+      ]
+    },
+    "data intialiased": {
+      "main": [
+        [
+          {
+            "node": "initialize session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "385e473a-7c9a-49b9-b949-0bcb6d0fc6b3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33535b0f2224b875c329cd1b321d14bf99434add7ca4a1fb20f1883acfd6985e"
+  },
+  "id": "pm44pmHSQ6LP9tky",
+  "tags": []
+}
