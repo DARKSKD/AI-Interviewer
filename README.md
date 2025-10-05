@@ -24,7 +24,7 @@ Backend Automation: n8n workflows (2 separate flows for processing & storage)
 
 APIs & Services:
 
-Cerebras API
+**Cerebras API** **( Main Role )**
  – AI-based question generation
 
 PDF.co
@@ -34,6 +34,9 @@ ElevenLabs
  – Text-to-Speech
 
 Speech-to-Text service (via ElevenLabs / custom integration)
+
+Gemini
+- Key skills and attributes
 
 Supabase
  – database & session storage
