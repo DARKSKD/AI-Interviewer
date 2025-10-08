@@ -7,7 +7,7 @@ AI Voice Interviewer
 
 
 
-Youtube Link : https://youtu.be/qoLFcG0OX24
+Youtube Link : https://youtu.be/zzg8t1rauHI
 
 N8N Workflow Files are : Start Interview.json  &  Answer Handler.json . Those two files are uploaded above.
 
